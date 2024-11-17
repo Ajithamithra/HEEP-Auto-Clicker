@@ -1,0 +1,92 @@
+# Nov 17 2024, Final before implementing to plant mag setup
+
+#include <Servo.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// Create Servo and LCD objects
+Servo myServo;
+LiquidCrystal_I2C lcd(0x27, 16, 2);  // Change 0x27 to your display's I2C address if needed
+
+// Pin assignments
+const int servoPin = 9;  // Servo connected to pin 9
+const int potPin = A0;   // Potentiometer connected to analog pin A0
+
+// Elapsed time tracking
+unsigned long startMillis;  // Start time in milliseconds
+unsigned long elapsedMillis;
+unsigned long lastServoTime = 0;  // Last time the servo moved
+unsigned long servoDelay = 0;     // Delay time for servo actions
+
+// Non-blocking flag to control servo movement
+bool isServoMoving = false;  // Flag to check if the servo is moving
+
+void setup() {
+  myServo.attach(servoPin);  // Attach the servo
+  myServo.write(0);          // Start at 0 degrees
+
+  lcd.init();                // Initialize the LCD
+  lcd.backlight();           // Turn on the backlight
+  lcd.print("Initializing..."); // Display initialization message
+  delay(1000);               // Wait for 1 second
+  lcd.clear();               // Clear the display
+
+  startMillis = millis();    // Initialize the start time for elapsed time
+}
+
+void loop() {
+  // Read the potentiometer value (0 to 1023)
+  int potValue = analogRead(potPin);                
+
+  // Map the potentiometer value to rest time range (0 to 60 seconds)
+  long restTime = map(potValue, 0, 1023, 0, 60000);  // Map to 0 - 60000 ms (0 to 60 sec)
+  
+  // Ensure restTime is within bounds (shouldn't be negative)
+  restTime = constrain(restTime, 0, 60000);  // Constrain the restTime between 0 and 60000 ms
+
+  // Convert milliseconds to seconds for display
+  float restTimeSeconds = restTime / 1000.0;
+
+  // Calculate elapsed time
+  elapsedMillis = millis() - startMillis;
+  unsigned long elapsedSeconds = elapsedMillis / 1000;
+  int days = elapsedSeconds / 86400;                // Calculate days
+  int hours = (elapsedSeconds % 86400) / 3600;      // Calculate hours
+  int minutes = (elapsedSeconds % 3600) / 60;       // Calculate minutes
+  int seconds = elapsedSeconds % 60;                // Calculate seconds
+
+  // Update the LCD with relevant information in real-time
+  lcd.setCursor(0, 0);  // First row: Potentiometer value in seconds
+  lcd.print("Pot Val: ");
+  lcd.print(restTimeSeconds, 1);    // Show mapped potentiometer value in seconds
+  
+  lcd.setCursor(0, 1);  // Second row: Elapsed time (Days, Hours, Minutes, Seconds)
+  lcd.print("T: ");
+  lcd.print(days);      // Display days
+  lcd.print("D ");
+  lcd.print(hours);     // Display hours
+  lcd.print("H ");
+  lcd.print(minutes);   // Display minutes
+  lcd.print("M ");
+  lcd.print(seconds);   // Display seconds
+  lcd.print("S  ");      // Clear trailing characters if any
+
+  // Perform the servo "click" action based on the rest time
+  if (!isServoMoving) {  // Only trigger the servo if it's not currently moving
+    if (millis() - lastServoTime >= restTime) {
+      // Move servo to 45 degrees
+      myServo.write(45);    
+      lastServoTime = millis(); // Update the last servo time
+      servoDelay = 200;         // Duration to keep the servo at 45 degrees
+      isServoMoving = true;     // Flag to indicate the servo is moving
+    }
+  }
+  
+  // After the servo reaches 45 degrees, move it back to 0 degrees after a short delay
+  if (isServoMoving && millis() - lastServoTime >= servoDelay) {
+    myServo.write(0);         // Move servo back to 0 degrees
+    lastServoTime = millis(); // Update the last servo time
+    servoDelay = 200;         // Duration to keep the servo at 0 degrees
+    isServoMoving = false;    // Flag to indicate the servo has finished moving
+  }
+}
