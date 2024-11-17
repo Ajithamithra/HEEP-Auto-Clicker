@@ -57,7 +57,7 @@ void loop() {
 
   // Update the LCD with relevant information in real-time
   lcd.setCursor(0, 0);  // First row: Potentiometer value in seconds
-  lcd.print("Pot Val: ");
+  lcd.print("Period: ");
   lcd.print(restTimeSeconds, 1);    // Show mapped potentiometer value in seconds
   
   lcd.setCursor(0, 1);  // Second row: Elapsed time (Days, Hours, Minutes, Seconds)
